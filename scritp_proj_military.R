@@ -43,6 +43,7 @@ ipca <- data.frame(
 # -------------------------------
 
 ano_base <- 2024  # Ano base para valores reais
+bilhoes <- 1000000000
 
 db_completo <- db_military_expenditure %>% 
   left_join(ipca, by = "ano") %>% 
@@ -50,7 +51,8 @@ db_completo <- db_military_expenditure %>%
     fator_inflacao = (ipca / 100) + 1,
     fator_acumulado = cumprod(fator_inflacao),
     deflator = fator_acumulado / fator_acumulado[ano == ano_base],
-    gastos_reais = brazil_military_expenditure * deflator
+    gastos_reais = brazil_military_expenditure * deflator,
+    gastos_reais_reduzido = gastos_reais/bilhoes
   )
 
 # Visualizar resultado
@@ -80,10 +82,39 @@ cat(
 )
 
 
-
-
-
-
+# Criando gráfico dos gastos militares reais com anotações e tema limpo sem grades
+ggplot2::ggplot() +
+  geom_line(data = db_completo, 
+            aes(x = ano, y = gastos_reais_reduzido), 
+            size = 1,
+            color = "firebrick") + 
+  theme_minimal() +
+  geom_text(aes(x = 2002, y = 19, label = "Gastos em 2000:\nR$ 4,92 Bi"),
+            size = 3.5,
+            hjust = 0.5,
+            vjust = 0.5,
+            fontface = "bold") +
+  geom_text(aes(x = 2022, y = 60, label = "Gastos em 2023:\nR$ 103,81 Bi"),
+            size = 3.5,
+            hjust = 0.5,
+            vjust = 0.5,
+            fontface = "bold") +
+  geom_text(aes(x = 2012, y = 57, label = "Crescimento de\n+ de 2000% entre\n2000 e 2023"),
+            size = 3.5,
+            hjust = 0.5,
+            vjust = 0.5,
+            fontface = "bold") +
+  theme (
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  ) +
+  labs(
+    x = "Year",
+    y = "Military Expenditure",
+    title = "Military Expenditure Brazil (in Billions of BRL)",
+    caption = "Source: SIPRI and IPCA/IBGE"
+    
+  )
 
 
 
