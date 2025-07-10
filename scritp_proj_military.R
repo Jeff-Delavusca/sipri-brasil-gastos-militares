@@ -88,7 +88,7 @@ ggplot2::ggplot() +
             aes(x = ano, y = gastos_reais_reduzido), 
             size = 1,
             color = "firebrick") + 
-  theme_minimal() +
+  theme_bw() +
   geom_text(aes(x = 2002, y = 19, label = "Gastos em 2000:\nR$ 4,92 Bi"),
             size = 3.5,
             hjust = 0.5,
@@ -106,7 +106,10 @@ ggplot2::ggplot() +
             fontface = "bold") +
   theme (
     panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank()
+    panel.grid.minor = element_blank(),
+    axis.line = element_blank(),        # Remove linhas dos eixos
+    panel.background = element_rect(fill = "white"),
+    plot.background = element_rect(fill = "white")
   ) +
   labs(
     x = "Year",
@@ -116,6 +119,7 @@ ggplot2::ggplot() +
     
   )
 
+ggsave("grafico_gastos.png", width = 7, height = 4, dpi = 300)
 
 
 
