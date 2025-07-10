@@ -57,3 +57,39 @@ db_completo <- db_military_expenditure %>%
 View(db_completo)
 
 
+# Cálculo da variação real dos gastos entre dois anos
+ano_inicial <- 2000
+ano_final <- 2023
+
+valor_inicial <- db_completo %>% 
+  filter(ano == ano_inicial) %>% 
+  pull(gastos_reais)
+
+valor_final <- db_completo %>% 
+  filter(ano == ano_final) %>% 
+  pull(gastos_reais)
+
+variacao_percentual <- ((valor_final - valor_inicial) / valor_inicial) * 100
+
+
+# Exibindo resultado
+cat(
+  paste0("Variação real dos gastos militares entre ",
+         ano_inicial, " e ", ano_final, ": ",
+         round(variacao_percentual, 2), "%\n")
+)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
