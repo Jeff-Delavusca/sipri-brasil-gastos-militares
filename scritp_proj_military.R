@@ -4,29 +4,38 @@
 # Autor: Jeff Delavusca
 # ================================
 
+
 # -------------------------------
 # 1. Carregando pacotes
 # -------------------------------
 
+# Verifica se o pacote 'abaixo'sidrar' está instalado, caso não esteja, instala automaticamente
 if (!require("sidrar")) install.packages("sidrar")
+
+# Carrega os pacotes necessários
 library(sidrar)
 library(tidyverse)
+
 
 # -------------------------------
 # 2. Carregando dataset do GitHub (Brasil)
 # -------------------------------
 
+# Define a URL com os dados de gastos militares nominais
 url_data <- "https://raw.githubusercontent.com/Jeff-Delavusca/sipri-brasil-gastos-militares/refs/heads/main/dados-gastos-nominais.csv"
 
+# Lê o arquivo CSV da URL e armazena no dataframe 'db_expenditure'
 db_expenditure <- read.csv2(url_data)
 
-# Tratando os dados
-db_expenditure <- db_expenditure[, -3]  # Remove coluna desnecessária
+# Remove a terceira coluna (em branco) do dataframe
+db_expenditure <- db_expenditure[, -3]  
+
 
 # -------------------------------
 # 3. IPCA anual (2000–2024)
 # -------------------------------
 
+# Cria um dataframe com os dados anuais do IPCA (inflação) de 2000 a 2024
 ipca <- data.frame(
   year = 2000:2024,
   ipca = c(5.97, 7.67, 12.53, 9.3, 7.6, 5.69, 3.14, 4.46, 5.9, 4.31,
@@ -34,62 +43,86 @@ ipca <- data.frame(
            4.52, 10.06, 5.79, 4.62, 4.83)
 )
 
+
 # -------------------------------
 # 4. Juntando bases e deflacionando os dados
 # -------------------------------
 
-year_base <- 2024
+# Define automaticamente o maior ano disponível na base da inflação como ano base
+year_base <- max(ipca$year, na.rm = TRUE)
+
+# Define constande para conversão de valores em bilhões
 bilions <- 1e9
 
+# Junta as bases de gastos nominais e inflação, calculando os valores deflacionados (reais)
 db_complete <- db_expenditure %>%
-  left_join(ipca, by = "year") %>%
+  left_join(ipca, by = "year") %>%                                     # Une as bases "db_expenditure' e 'ipca' pela coluna 'year'
   mutate(
-    fator_inflacao = (ipca / 100) + 1,
-    fator_acumulado = cumprod(fator_inflacao),
-    deflator = fator_acumulado / fator_acumulado[year == year_base],
-    gastos_reais = brazil_military_expenditure * deflator,
-    gastos_reais_reduzido = gastos_reais / bilions
+    fator_inflacao = (ipca / 100) + 1,                                 # Calcula o fator de inflação anual
+    fator_acumulado = cumprod(fator_inflacao),                         # Calcula o fator acumulado de inflação ao longo dos anos
+    deflator = fator_acumulado / fator_acumulado[year == year_base],   # Calcula o deflator com base no ano-base
+    gastos_reais = brazil_military_expenditure * deflator,             # Aplica o deflator aos gastos nominais
+    gastos_reais_reduzido = gastos_reais / bilions                     # Converte valores para bilhões de reais 
   )
 
 View(db_complete)
+
 
 # -------------------------------
 # 5. Cálculo da variação acumulada entre 2000 e 2023
 # -------------------------------
 
-start_year <- 2000
+# Define automaticamente o menor ano disponível na base de gastos militares
+start_year <- min(db_complete$year, na.rm = TRUE)
+
+# Define manualmente o ano de 2023 como ano final, pois é o último com dados deflacionados
 end_year <- 2023
 
+# Filtra o primeiro ano da base e coleta o gasto militar real do respectivo ano
 start_value <- db_complete %>%
   filter(year == start_year) %>%
   pull(gastos_reais)
 
+# Filtra o ano final da base e coleta o gasto militar real do respectivo ano
 end_value <- db_complete %>%
   filter(year == end_year) %>%
   pull(gastos_reais)
 
+# Calcula a variação percentual acumulada entre os dois anos selecionados
 percentage_chage <- ((end_value - start_value) / start_value) * 100
 
+# IExibe no console os valores inicial e final dos gastos reais, além da variação percentual 
 cat(paste0("Variação real dos gastos militares entre ",
            start_value, " e ", end_value, ": ",
            round(percentage_chage, 2), "%\n"))
+
 
 # -------------------------------
 # 6. Gráfico dos gastos reais com anotações
 # -------------------------------
 
+# Cria gráfico de linha com os gastos militares reais ao longo do tempo
 ggplot2::ggplot() +
   geom_line(data = db_complete,
             aes(x = year, y = gastos_reais_reduzido),
             size = 1,
-            color = "firebrick") +
-  theme_bw() +
+            color = "firebrick") +  # Linha vermelha principal
+  theme_bw() +  # Aplica tema com fundo branco
+  
+  
+  # Adiciona anotações de texto para destacar valores selecionados
   geom_text(aes(x = 2002, y = 19, label = "Gastos em 2000:\nR$ 4,92 Bi"),
             size = 3.5, hjust = 0.5, vjust = 0.5, fontface = "bold") +
+  
+  
   geom_text(aes(x = 2022, y = 60, label = "Gastos em 2023:\nR$ 103,81 Bi"),
             size = 3.5, hjust = 0.5, vjust = 0.5, fontface = "bold") +
+  
+  
   geom_text(aes(x = 2012, y = 57, label = "Crescimento de\n+ de 2000% entre\n2000 e 2023"),
             size = 3.5, hjust = 0.5, vjust = 0.5, fontface = "bold") +
+  
+  # Remove grades e bordas do gráfico para o visual mais limpo
   theme(
     panel.grid.major = element_blank(),
     panel.grid.minor = element_blank(),
@@ -97,6 +130,8 @@ ggplot2::ggplot() +
     panel.background = element_rect(fill = "white"),
     plot.background = element_rect(fill = "white")
   ) +
+  
+  # Define rótulos dos eixos, títulos e fonte dos dados
   labs(
     x = "Ano",
     y = "Gastos Militares (R$ bilhões)",
@@ -104,23 +139,32 @@ ggplot2::ggplot() +
     caption = "Fonte: SIPRI e IPCA/IBGE"
   )
 
+# Salva o gráfico como imagem PNG
 ggsave("grafico_gastos.png", width = 7, height = 4, dpi = 300)
+
 
 # -------------------------------
 # 7. Carregando base regional para análises comparativas
 # -------------------------------
 
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
 url_data2 <- "https://raw.githubusercontent.com/Jeff-Delavusca/sipri-brasil-gastos-militares/refs/heads/main/military_expenditure_by_region.csv"
 
+# Usar o read.csv2 pois os dados estão separados por ';' (padrão europeu)
 expenditure_by_region <- read.csv2(url_data2)
 
-# Exemplo: Crescimento acumulado dos gastos da África
+# Definir ano base para cálculo do crescimento acumulado 
 start_year <- 2000
 
+# Valores base para cada região no ano base
 base_value <- expenditure_by_region %>%
   filter(Year == start_year) %>%
   select(-Year)
 
+# Calcular variação acumulada (%) para cada região, comparando com o ano base
 acm_by_region <- expenditure_by_region %>%
   mutate(
     África = ((Africa / base_value$Africa) - 1) * 100,
@@ -131,24 +175,22 @@ acm_by_region <- expenditure_by_region %>%
   ) %>% 
   select(Year,África, `Ásia e Oceania`, Europa, `Oriente Médio`, Américas) 
 
-# Convertendo para formato longo
+# Converter para formato longo para facilitar o gráfico
 acm_by_region_long <- acm_by_region %>%
   pivot_longer(-Year, names_to = "Região", values_to = "Valor")
 
 
-# Ordenar regiões por valor final (último ano), para melhor sobreposição visual
+# Ordenar fatores da variável Região baseado no valor do último ano para o gráfico
 ordem_regioes <- acm_by_region_long %>%
   filter(Year == max(Year)) %>%
   arrange(Valor) %>%
   pull(Região)
 
-
-# Transformar Região em fator ordenado
 acm_by_region_long <- acm_by_region_long %>%
   mutate(Região = factor(Região, levels = ordem_regioes))
 
 
-# Plot elegante
+# Gráfico da variação acumulada dos gastos militares (%)
 ggplot(acm_by_region_long, aes(x = Year, y = Valor, fill = Região, color = Região)) +
   geom_line(size = 1) +
   scale_fill_brewer(palette = "Set2") +
@@ -180,6 +222,9 @@ ggplot(acm_by_region_long, aes(x = Year, y = Valor, fill = Região, color = Regi
   )
 
 
+# Gráfico dos gastos militares reais por região
+
+# Renomear colunas para português para facilitar leitura
 expenditure_by_region_long <- expenditure_by_region %>% 
     rename(
       `Ásia e Oceania` = Asia...Oceania,
@@ -191,6 +236,7 @@ expenditure_by_region_long <- expenditure_by_region %>%
     )
 
 
+# Ordenar fatores para legenda e cores baseando-se no último ano
 ordem_regioes <- expenditure_by_region_long %>%
   filter(Year == max(Year)) %>%
   arrange(Valor) %>%
@@ -201,6 +247,7 @@ expenditure_by_region_long <- expenditure_by_region_long  %>%
   mutate(Região = factor(Região, levels = ordem_regioes))
 
 
+# Gráfico dos gastos nominais (US$ bilhões)
 ggplot(expenditure_by_region_long, aes(x = Year, y = Valor, fill = Região, color = Região)) +
   geom_line(size = 1) +
   scale_fill_brewer(palette = "Set2") +
